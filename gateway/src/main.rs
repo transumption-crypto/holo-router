@@ -41,13 +41,6 @@ fn as_str<T: AsRef<str>>(s: T) -> String {
     format!("{}", s.as_ref())
 }
 
-fn as_addr(host: &str, port: u16) -> Option<SocketAddr> {
-    match format!("{}:{}", host, port).to_socket_addrs() {
-        Ok(mut addrs) => addrs.next(),
-        Err(_) => None
-    }
-}
-
 async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH).await?;
     let mut rd = Reader::init(&buf);
@@ -87,7 +80,13 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
         return Err("Unknown domain zone".into());
     }
 
-    let addr = as_addr(&host_str, 443).unwrap();
+    let addr = match format!("{}:443", host_str).to_socket_addrs() {
+        Ok(mut addrs) => addrs.next().unwrap(),
+        Err(_) => {
+            return Err("".into());
+        }
+    };
+
     let outbound = TcpStream::connect(&addr).await?;
     splice(inbound, outbound).await
 }
