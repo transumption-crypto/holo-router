@@ -37,8 +37,12 @@ async fn splice(inbound: TcpStream, outbound: TcpStream) -> Result<(), Box<dyn E
     Ok(())
 }
 
-fn as_addr<T: AsRef<str>>(host: T, port: u16) -> Option<SocketAddr> {
-    match format!("{}:{}", host.as_ref(), port).to_socket_addrs() {
+fn as_str<T: AsRef<str>>(s: T) -> String {
+    format!("{}", s.as_ref())
+}
+
+fn as_addr(host: &str, port: u16) -> Option<SocketAddr> {
+    match format!("{}:{}", host, port).to_socket_addrs() {
         Ok(mut addrs) => addrs.next(),
         Err(_) => None
     }
@@ -77,7 +81,13 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let addr = as_addr(host, 443).unwrap();
+    let host_str = as_str(host);
+
+    if !host_str.ends_with("holohost.net") {
+        return Err("Unknown domain zone".into());
+    }
+
+    let addr = as_addr(&host_str, 443).unwrap();
     let outbound = TcpStream::connect(&addr).await?;
     splice(inbound, outbound).await
 }
