@@ -1,5 +1,5 @@
 [package]
-name = "holo-router-proxy"
+name = "holo-router-gateway"
 edition = "2018"
 version = "0.0.0"
 

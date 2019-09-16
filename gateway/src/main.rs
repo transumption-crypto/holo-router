@@ -3,7 +3,6 @@ use rustls::internal::msgs::codec::{Codec, Reader};
 use rustls::internal::msgs::enums::{ContentType, ProtocolVersion};
 use rustls::internal::msgs::handshake::{HandshakeMessagePayload, HandshakePayload, ServerNamePayload};
 
-use std::env::args;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::error::Error;
 
@@ -73,15 +72,15 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
             return Err("Unknown SNI payload".into());
         }
     };
-    
-    let outbound = TcpStream::connect(&as_addr(host, 443).unwrap()).await?;
+
+    let addr = as_addr(host, 443).unwrap();
+    let outbound = TcpStream::connect(&addr).await?;
     splice(inbound, outbound).await
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let addr = "0.0.0.0:443".parse()?;
-    let mut listener = TcpListener::bind(&addr)?;
+    let mut listener = TcpListener::bind("0.0.0.0:443").await?;
 
     loop {
         let (inbound, _) = listener.accept().await?;

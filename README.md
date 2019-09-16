@@ -5,7 +5,7 @@
 ## Components
 
 - Agent: HTTP `POST /v1` client
-- Proxy: transparent domain substitution proxy with dispatch by SNI
+- Gateway: transparent domain substitution proxy with dispatch by SNI
 - Registry: DNS and HTTP `POST /v1` server backed by [Scylla][]
 
 [Scylla]: https://www.scylladb.com
@@ -88,11 +88,12 @@ receive the challenge to another IP address without any limitations.
 
 See: https://letsencrypt.org/docs/rate-limits/
 
-See [Proxy docs](proxy/README.md). Proxy doesn't need to decrypt user traffic
-thanks to [SNI][] which is sent in cleartext, and that contains enough
+See [Gateway docs](gateway/README.md). Gateway doesn't need to decrypt user
+traffic thanks to [SNI][] which is sent in cleartext, which contains enough
 information to dispatch request to specific HoloPort.
 
-Proxy will eventually support [ESNI in Split Mode](https://tools.ietf.org/html/draft-ietf-tls-esni-04#section-5.4).
+Gateway will eventually implement [ESNI in Split
+Mode](https://tools.ietf.org/html/draft-ietf-tls-esni-04#section-5.4).
 
 [Let's Encrypt]: https://letsencrypt.org
 [SNI]: https://en.wikipedia.org/wiki/Server_Name_Indication

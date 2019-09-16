@@ -30,9 +30,9 @@ in
     cargoDir = ".";
   };
 
-  holo-router-proxy = buildRustPackage rustPlatform {
-    name = "holo-router-proxy";
-    src = gitignoreSource ./proxy;
+  holo-router-gateway = buildRustPackage rustPlatform {
+    name = "holo-router-gateway";
+    src = gitignoreSource ./gateway;
     cargoDir = ".";
   };
 
