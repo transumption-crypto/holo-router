@@ -35,4 +35,10 @@ in
     src = gitignoreSource ./proxy;
     cargoDir = ".";
   };
+
+  holo-router-registry = buildRustPackage rustPlatform {
+    name = "holo-router-registry";
+    src = gitignoreSource ./registry;
+    cargoDir = ".";
+  };
 }
