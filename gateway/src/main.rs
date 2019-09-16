@@ -1,3 +1,5 @@
+use futures::future;
+
 // See: https://tls.ulfheim.net
 use rustls::internal::msgs::codec::{Codec, Reader};
 use rustls::internal::msgs::enums::{ContentType, ProtocolVersion};
@@ -6,8 +8,8 @@ use rustls::internal::msgs::handshake::{HandshakeMessagePayload, HandshakePayloa
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::error::Error;
 
+use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::prelude::*;
 
 const TLS_RECORD_HEADER_LENGTH: usize = 5;
 
@@ -29,6 +31,8 @@ async fn splice(inbound: TcpStream, outbound: TcpStream) -> Result<(), Box<dyn E
     // TODO: use splice(2) syscall
     let client_to_server = ri.copy(&mut wo);
     let server_to_client = ro.copy(&mut wi);
+
+    future::try_join(client_to_server, server_to_client).await?;
 
     Ok(())
 }
