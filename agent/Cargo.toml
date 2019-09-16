@@ -1,0 +1,6 @@
+[package]
+name = "holo-router-agent"
+edition = "2018"
+version = "0.0.0"
+
+[dependencies]

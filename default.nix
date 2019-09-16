@@ -24,6 +24,12 @@ let
 in
 
 {
+  holo-router-agent = buildRustPackage rustPlatform {
+    name = "holo-router-agent";
+    src = gitignoreSource ./agent;
+    cargoDir = ".";
+  };
+
   holo-router-proxy = buildRustPackage rustPlatform {
     name = "holo-router-proxy";
     src = gitignoreSource ./proxy;
