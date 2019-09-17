@@ -1,5 +1,7 @@
-use chrono::offset::Utc;
 use futures::future;
+
+use log::Level::{Debug, Info, Warn};
+use log::{log, log_enabled};
 
 // See: https://tls.ulfheim.net
 use rustls::internal::msgs::codec::{Codec, Reader};
@@ -8,14 +10,22 @@ use rustls::internal::msgs::handshake::{
     HandshakeMessagePayload, HandshakePayload, ServerNamePayload,
 };
 
+use std::cell::RefCell;
 use std::error::Error;
+use std::io::Write;
 use std::net::ToSocketAddrs;
 
 use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
 
-const TLS_RECORD_HEADER_LENGTH: usize = 5;
+use uuid::Uuid;
+
 const TLS_HANDSHAKE_MAX_LENGTH: usize = 2048;
+const TLS_RECORD_HEADER_LENGTH: usize = 5;
+
+macro_rules! err {
+    ($($arg:tt)*) => { Err(format!($($arg)*).into()) }
+}
 
 async fn peek(stream: &mut TcpStream, size: usize) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut buf = vec![0; size];
@@ -24,7 +34,7 @@ async fn peek(stream: &mut TcpStream, size: usize) -> Result<Vec<u8>, Box<dyn Er
     if n == size {
         Ok(buf)
     } else {
-        Err(format!("Peek size mismatch: {} != {}", n, size).into())
+        err!("Peek size mismatch: {} != {}", n, size)
     }
 }
 
@@ -41,6 +51,7 @@ async fn splice(inbound: TcpStream, outbound: TcpStream) -> Result<(), Box<dyn E
     Ok(())
 }
 
+// TODO: figure out the correct way to do this
 fn as_str<T: AsRef<str>>(s: T) -> String {
     format!("{}", s.as_ref())
 }
@@ -53,16 +64,24 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let protocol_version = ProtocolVersion::read(&mut rd).unwrap();
     let handshake_size = usize::from(u16::read(&mut rd).unwrap());
 
+    log!(
+        Debug,
+        "Content type: {:?}, protocol version: {:?}, handshake size: {}",
+        content_type,
+        protocol_version,
+        handshake_size
+    );
+
     if content_type != ContentType::Handshake {
-        return Err("TLS message is not a handshake".into());
+        return err!("TLS message is not a handshake");
     }
 
     if handshake_size > TLS_HANDSHAKE_MAX_LENGTH {
-        return Err(format!(
-            "TLS handshake size is {}, expected {} max",
-            handshake_size, TLS_HANDSHAKE_MAX_LENGTH
-        )
-        .into());
+        return err!(
+            "TLS handshake size is {} > {}",
+            handshake_size,
+            TLS_HANDSHAKE_MAX_LENGTH
+        );
     }
 
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH + handshake_size).await?;
@@ -74,34 +93,36 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let client_hello = match handshake.payload {
         HandshakePayload::ClientHello(x) => x,
         _ => {
-            return Err("TLS handshake is not Client Hello".into());
+            return err!("TLS handshake is not Client Hello");
         }
     };
 
     let sni = match client_hello.get_sni_extension() {
         Some(x) => x,
         None => {
-            return Err("Missing SNI".into());
+            return err!("Missing SNI");
         }
     };
 
     let host = match &sni[0].payload {
         ServerNamePayload::HostName(x) => x,
         ServerNamePayload::Unknown(_) => {
-            return Err("Unknown SNI payload type".into());
+            return err!("Unknown SNI payload type");
         }
     };
 
     let host_str = as_str(host);
 
+    log!(Debug, "SNI hostname: {}", host_str);
+
     if !host_str.ends_with("holohost.net") {
-        return Err(format!("Rejected {}", host_str).into());
+        return err!("Rejected {}", host_str);
     }
 
     let addr = match format!("{}:443", host_str).to_socket_addrs() {
         Ok(mut addrs) => addrs.next().unwrap(),
         Err(_) => {
-            return Err(format!("Failed to resolve {}", host_str).into());
+            return err!("Failed to resolve {}", host_str);
         }
     };
 
@@ -109,15 +130,42 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     splice(inbound, outbound).await
 }
 
+thread_local!(static UUID: RefCell<Uuid> = RefCell::new(Uuid::nil()));
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::Builder::from_default_env()
+        .format(|buf, record| {
+            UUID.with(|f| {
+                writeln!(
+                    buf,
+                    "[{} {} {:<5} {}] {}",
+                    buf.precise_timestamp(),
+                    *f.borrow(),
+                    buf.default_styled_level(record.level()),
+                    record.target(),
+                    record.args()
+                )
+            })
+        })
+        .init();
+
     let mut listener = TcpListener::bind("0.0.0.0:443").await?;
 
     loop {
         let (inbound, inbound_addr) = listener.accept().await?;
+
         tokio::spawn(async move {
+            if log_enabled!(Warn) {
+                UUID.with(|f| {
+                    *f.borrow_mut() = Uuid::new_v4();
+                });
+            }
+
+            log!(Info, "Accepted connection from {}", inbound_addr.ip());
+
             if let Err(e) = process(inbound).await {
-                println!("{} {}: {}", Utc::now().naive_utc(), inbound_addr.ip(), e);
+                log!(Warn, "{}", e);
             }
         });
     }
