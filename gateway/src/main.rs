@@ -4,15 +4,18 @@ use futures::future;
 // See: https://tls.ulfheim.net
 use rustls::internal::msgs::codec::{Codec, Reader};
 use rustls::internal::msgs::enums::{ContentType, ProtocolVersion};
-use rustls::internal::msgs::handshake::{HandshakeMessagePayload, HandshakePayload, ServerNamePayload};
+use rustls::internal::msgs::handshake::{
+    HandshakeMessagePayload, HandshakePayload, ServerNamePayload,
+};
 
-use std::net::ToSocketAddrs;
 use std::error::Error;
+use std::net::ToSocketAddrs;
 
 use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
 
 const TLS_RECORD_HEADER_LENGTH: usize = 5;
+const TLS_HANDSHAKE_MAX_LENGTH: usize = 2048;
 
 async fn peek(stream: &mut TcpStream, size: usize) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut buf = vec![0; size];
@@ -45,7 +48,7 @@ fn as_str<T: AsRef<str>>(s: T) -> String {
 async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH).await?;
     let mut rd = Reader::init(&buf);
-    
+
     let content_type = ContentType::read(&mut rd).unwrap();
     let protocol_version = ProtocolVersion::read(&mut rd).unwrap();
     let handshake_size = usize::from(u16::read(&mut rd).unwrap());
@@ -54,8 +57,12 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
         return Err("TLS message is not a handshake".into());
     }
 
-    if handshake_size > 2048 {
-        return Err(format!("TLS handshake size is {}, expected 2048 max", handshake_size).into());
+    if handshake_size > TLS_HANDSHAKE_MAX_LENGTH {
+        return Err(format!(
+            "TLS handshake size is {}, expected {} max",
+            handshake_size, TLS_HANDSHAKE_MAX_LENGTH
+        )
+        .into());
     }
 
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH + handshake_size).await?;
@@ -70,7 +77,7 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
             return Err("TLS handshake is not Client Hello".into());
         }
     };
-    
+
     let sni = match client_hello.get_sni_extension() {
         Some(x) => x,
         None => {
