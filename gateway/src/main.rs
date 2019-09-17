@@ -49,11 +49,15 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let content_type = ContentType::read(&mut rd).unwrap();
     let protocol_version = ProtocolVersion::read(&mut rd).unwrap();
     let handshake_size = usize::from(u16::read(&mut rd).unwrap());
-    
+
     if content_type != ContentType::Handshake {
         return Err("TLS message is not a handshake".into());
     }
-    
+
+    if handshake_size > 2048 {
+        return Err(format!("TLS handshake size is {}, expected 2048 max", handshake_size).into());
+    }
+
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH + handshake_size).await?;
     let mut rd = Reader::init(&buf);
     rd.take(TLS_RECORD_HEADER_LENGTH);
