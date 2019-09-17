@@ -4,6 +4,7 @@ edition = "2018"
 version = "0.0.0"
 
 [dependencies]
+chrono = "0.4.9"
 futures-preview = "0.3.0-alpha.18"
 rustls = "0.16.0"
 tokio = "0.2.0-alpha.2"

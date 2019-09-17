@@ -1,3 +1,4 @@
+use chrono::offset::Utc;
 use futures::future;
 
 // See: https://tls.ulfheim.net
@@ -5,7 +6,7 @@ use rustls::internal::msgs::codec::{Codec, Reader};
 use rustls::internal::msgs::enums::{ContentType, ProtocolVersion};
 use rustls::internal::msgs::handshake::{HandshakeMessagePayload, HandshakePayload, ServerNamePayload};
 
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::error::Error;
 
 use tokio::io::AsyncReadExt;
@@ -20,7 +21,7 @@ async fn peek(stream: &mut TcpStream, size: usize) -> Result<Vec<u8>, Box<dyn Er
     if n == size {
         Ok(buf)
     } else {
-        Err(format!("size mismatch: {} != {}", n, size).into())
+        Err(format!("Peek size mismatch: {} != {}", n, size).into())
     }
 }
 
@@ -50,7 +51,7 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let handshake_size = usize::from(u16::read(&mut rd).unwrap());
     
     if content_type != ContentType::Handshake {
-        return Err("TLS content type is not handshake".into());
+        return Err("TLS message is not a handshake".into());
     }
     
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH + handshake_size).await?;
@@ -66,24 +67,30 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
         }
     };
     
-    let sni = client_hello.get_sni_extension().unwrap();
+    let sni = match client_hello.get_sni_extension() {
+        Some(x) => x,
+        None => {
+            return Err("Missing SNI".into());
+        }
+    };
+
     let host = match &sni[0].payload {
         ServerNamePayload::HostName(x) => x,
         ServerNamePayload::Unknown(_) => {
-            return Err("Unknown SNI payload".into());
+            return Err("Unknown SNI payload type".into());
         }
     };
 
     let host_str = as_str(host);
 
     if !host_str.ends_with("holohost.net") {
-        return Err("Unknown domain zone".into());
+        return Err(format!("Rejected {}", host_str).into());
     }
 
     let addr = match format!("{}:443", host_str).to_socket_addrs() {
         Ok(mut addrs) => addrs.next().unwrap(),
         Err(_) => {
-            return Err("".into());
+            return Err(format!("Failed to resolve {}", host_str).into());
         }
     };
 
@@ -96,10 +103,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut listener = TcpListener::bind("0.0.0.0:443").await?;
 
     loop {
-        let (inbound, _) = listener.accept().await?;
+        let (inbound, inbound_addr) = listener.accept().await?;
         tokio::spawn(async move {
             if let Err(e) = process(inbound).await {
-                println!("error: {:?}", e);
+                println!("{} {}: {}", Utc::now().naive_utc(), inbound_addr.ip(), e);
             }
         });
     }
