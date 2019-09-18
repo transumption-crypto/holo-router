@@ -4,11 +4,18 @@
 
 ## Components
 
-- Agent: HTTP `POST /v1` client
-- Gateway: transparent domain substitution proxy with dispatch by SNI
-- Registry: DNS and HTTP `POST /v1` server backed by [Scylla][]
+### Agent
 
-[Scylla]: https://www.scylladb.com
+HTTP `POST /v1/update` client.
+
+### Gateway
+
+Transparent peek-and-splice proxy with dispatch by SNI.
+
+### Registry
+
+DNS-over-HTTPS resolver and HTTP `POST /v1/update` server implemented as
+[Cloudflare Workers](https://workers.cloudflare.com).
 
 ## Rationale
 
