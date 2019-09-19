@@ -93,6 +93,10 @@ HoloPorts can leverage their residential egress to register a [Let's Encrypt][]
 account, which is the only endpoint rate limited per IP address. They can still
 receive the challenge to another IP address without any limitations.
 
+We'll need to add `holohost.net` to Mozilla's Public Suffix list which is what
+Let's Encrypt uses in order to define some of its limits. For example, see
+[this PR](https://github.com/publicsuffix/list/pull/881).
+
 See: https://letsencrypt.org/docs/rate-limits/
 
 See [Gateway docs](gateway/README.md). Gateway doesn't need to decrypt user
