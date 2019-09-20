@@ -6,7 +6,7 @@
 
 ### Agent
 
-HTTP `POST /v1/update` client.
+HTTP `POST /v1/register` client.
 
 ### Gateway
 
@@ -14,7 +14,7 @@ Transparent peek-and-splice proxy with dispatch by SNI.
 
 ### Registry
 
-DNS-over-HTTPS resolver and HTTP `POST /v1/update` server implemented as
+DNS-over-HTTPS resolver and HTTP `POST /v1/register` server implemented as
 [Cloudflare Workers](https://workers.cloudflare.com).
 
 ## Rationale
