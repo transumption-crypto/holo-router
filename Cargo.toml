@@ -4,4 +4,5 @@ edition = "2018"
 version = "0.0.0"
 
 [dependencies]
+ed25519-dalek = "1.0.0-pre.1"
 reqwest = "0.9.20"
