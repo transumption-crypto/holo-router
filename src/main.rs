@@ -1,1 +1,1 @@
-fn main() {}
+async fn main() {}

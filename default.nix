@@ -11,5 +11,8 @@ in
     name = "holo-router-agent";
     src = gitignoreSource ./.;
     cargoDir = ".";
+
+    nativeBuildInputs = [ pkgconfig ];
+    buildInputs = [ openssl ];
   };
 }

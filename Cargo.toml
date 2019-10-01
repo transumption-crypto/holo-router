@@ -4,4 +4,4 @@ edition = "2018"
 version = "0.0.0"
 
 [dependencies]
-rustls = "0.16"
+reqwest = "0.9.20"
