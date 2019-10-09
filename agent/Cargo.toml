@@ -4,6 +4,7 @@ edition = "2018"
 version = "0.0.0"
 
 [dependencies]
+base64 = "0.10"
 ed25519-dalek = { version = "1.0.0-pre.1", features = ["serde"] }
 failure = "0.1.5"
 reqwest = "0.9.11"
