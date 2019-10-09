@@ -27,7 +27,10 @@ in
   holo-router-agent = buildRustPackage rustPlatform {
     name = "holo-router-agent";
     src = gitignoreSource ./agent;
-    cargoDir = ".";
+    cargoSha256 = "0akyl9h6ajih1v4xspwiryzpwm1jwyp4jgqh8z54cb1b9ynn75ia";
+
+    nativeBuildInputs = [ pkgconfig ];
+    buildInputs = [ openssl ];
   };
 
   holo-router-gateway = buildRustPackage rustPlatform {
