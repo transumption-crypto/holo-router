@@ -3,5 +3,8 @@
 with pkgs;
 
 mkShell {
-  inputsFrom = lib.attrValues (import ./. { inherit pkgs; });
+  inputsFrom = with import ./. { inherit pkgs; }; [
+    holo-router-agent
+    holo-router-registry
+  ];
 }
