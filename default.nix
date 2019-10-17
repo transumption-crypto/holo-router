@@ -13,8 +13,8 @@ let
 
   rustChannel = rustChannelOf {
     channel = "nightly";
-    date = "2019-08-21";
-    sha256 = "0idc58ikv5lz7f8pvpv0zxrfcpbs1im24h5jh1crh5yfxc5rimg5";
+    date = "2019-09-16";
+    sha256 = "1k75ps2ymjr1mz1p751ifmsxwcjyr4k0i87jsmiaj7rblhgfvcan";
   };
 
   rustPlatform = makeRustPlatform {
@@ -24,9 +24,21 @@ let
 in
 
 {
-  holo-router-proxy = buildRustPackage rustPlatform {
-    name = "holo-router-proxy";
-    src = gitignoreSource ./proxy;
+  holo-router-agent = buildRustPackage rustPlatform {
+    name = "holo-router-agent";
+    src = gitignoreSource ./agent;
+    cargoDir = ".";
+  };
+
+  holo-router-gateway = buildRustPackage rustPlatform {
+    name = "holo-router-gateway";
+    src = gitignoreSource ./gateway;
+    cargoDir = ".";
+  };
+
+  holo-router-registry = buildRustPackage rustPlatform {
+    name = "holo-router-registry";
+    src = gitignoreSource ./registry;
     cargoDir = ".";
   };
 }
