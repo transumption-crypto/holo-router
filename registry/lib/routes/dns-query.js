@@ -1,11 +1,11 @@
-const dnsPacket = require('dns-packet')
+import * as dnsPacket from 'dns-packet'
 
-const dnsAnswer = async question => {
+const dnsQuery = async question => {
   if (question.class == 'IN' && question.type == 'A') {
     const [hcid, domain, tld] = question.name.split('.').slice(-3)
 
     if (domain == 'holohost' && tld == 'net') {
-      const ipv4 = await HCID_TO_IPV4.get(hcid)
+      const ipv4 = await AGENT_ID_TO_IPV4.get(hcid)
 
       if (ipv4 != null) {
         return [{
@@ -20,7 +20,7 @@ const dnsAnswer = async question => {
   }
 }
 
-const dnsQuery = async req => {
+const handle = async req => {
   const reqBuffer = Buffer.from(await req.arrayBuffer())
   const reqPacket = dnsPacket.decode(reqBuffer)
 
@@ -31,7 +31,7 @@ const dnsQuery = async req => {
   const resPacket = {
     type: 'response',
     questions: reqPacket.questions,
-    answers: await dnsAnswer(reqPacket.questions[0]) || []
+    answers: await dnsQuery(reqPacket.questions[0]) || []
   }
 
   return new Response(dnsPacket.encode(resPacket), {
@@ -39,8 +39,4 @@ const dnsQuery = async req => {
   })
 }
 
-const handleRequest = dnsQuery
-
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
+export { handle }

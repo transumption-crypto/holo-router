@@ -11,7 +11,7 @@
     "standard": "^14.3.1"
   },
   "scripts": {
-    "build": "webpack index.js",
-    "serve": "cloudworker --watch dist/main.js"
+    "build": "webpack lib",
+    "serve": "cloudworker -f AGENT_ID_TO_IPV4=kv-agent-id-to-ipv4.json -f SETTINGS=kv-settings.json --debug --watch dist/main.js"
   }
 }
