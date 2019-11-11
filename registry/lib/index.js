@@ -8,7 +8,7 @@ const handle = async req => {
   const url = req.parsedURL = new URL(req.url)
 
   switch ((req.method, url.pathname)) {
-    case ('POST', '/v1/dns-query'):
+    case ('GET', '/v1/dns-query'):
       return dnsQuery.handle(req)
     case ('POST', '/v1/update'):
       return update.handle(req)

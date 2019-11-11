@@ -22,7 +22,8 @@ const dnsQuery = async question => {
 }
 
 const handle = async req => {
-  const reqBuffer = Buffer.from(await req.arrayBuffer())
+  const url = new URL(req.url)
+  const reqBuffer = base64url.toBuffer(url.searchParams.get('dns'))
   const reqPacket = dnsPacket.decode(reqBuffer)
 
   if (reqPacket.questions.length != 1) {
