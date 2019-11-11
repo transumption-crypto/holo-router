@@ -1,8 +1,9 @@
+import * as base64url from 'base64url'
 import * as dnsPacket from 'dns-packet'
 
 const dnsQuery = async question => {
   if (question.class == 'IN' && question.type == 'A') {
-    const [hcid, domain, tld] = question.name.split('.').slice(-3)
+    const [hcid, domain, tld] = question.name.toLowerCase().split('.').slice(-3)
 
     if (domain == 'holohost' && tld == 'net') {
       const ipv4 = await AGENT_ID_TO_IPV4.get(hcid)

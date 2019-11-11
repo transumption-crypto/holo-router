@@ -15,7 +15,7 @@ const handle = async req => {
   const zerotierRequest = await getZeroTierMember(payload.zerotier_address)
   const zerotierPayload = await zerotierRequest.json()
 
-  await AGENT_ID_TO_IPV4.put(payload.holochain_agent_id, zerotierPayload.config.ipAssignments[0])
+  await AGENT_ID_TO_IPV4.put(payload.holochain_agent_id.toLowerCase(), zerotierPayload.config.ipAssignments[0])
   return respond(200)
 }
 
