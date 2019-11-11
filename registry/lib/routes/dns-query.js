@@ -32,6 +32,7 @@ const handle = async req => {
 
   const resPacket = {
     type: 'response',
+    id: reqPacket.id,
     questions: reqPacket.questions,
     answers: await dnsQuery(reqPacket.questions[0]) || []
   }
