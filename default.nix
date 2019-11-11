@@ -24,5 +24,11 @@ in
     name = "holo-router-registry";
     src = gitignoreSource ./registry;
     cargoDir = ".";
+
+    nativeBuildInputs = [
+      nodejs
+      python
+      (wasm-pack.override { inherit rustPlatform; })
+    ];
   };
 }

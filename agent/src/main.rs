@@ -39,7 +39,7 @@ struct Payload {
     #[serde(serialize_with = "encode_instant")]
     instant: SystemTime,
     #[serde(serialize_with = "encode_holochain_signing_key")]
-    holochain_public_key: PublicKey,
+    holochain_agent_id: PublicKey,
     zerotier_address: zerotier::Address,
 }
 
@@ -65,7 +65,7 @@ fn main() -> Result<(), Error> {
 
     let payload = Payload {
         instant: SystemTime::now(),
-        holochain_public_key: holochain_keypair.public,
+        holochain_agent_id: holochain_keypair.public,
         zerotier_address: zerotier_address,
     };
 
@@ -87,7 +87,7 @@ fn main() -> Result<(), Error> {
     );
 
     Client::new()
-        .post("https://registry.holo.host/v1/update")
+        .post("https://router-registry.holo.host/v1/update")
         .headers(headers)
         .body(payload_bytes)
         .send()?;
