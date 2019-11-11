@@ -87,7 +87,7 @@ fn main() -> Result<(), Error> {
     );
 
     Client::new()
-        .post("https://registry.holo.host/v1/update")
+        .post("https://router-registry.holo.host/v1/update")
         .headers(headers)
         .body(payload_bytes)
         .send()?;
