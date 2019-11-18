@@ -13,7 +13,7 @@ const dnsQuery = async question => {
           class: 'IN',
           data: ipv4,
           name: question.name,
-          ttl: 300, // 5 minutes
+          ttl: 10, // 10 seconds
           type: 'A'
         }]
       }
