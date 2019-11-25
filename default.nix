@@ -16,6 +16,8 @@ in
     RUST_SODIUM_SHARED = "1";
 
     nativeBuildInputs = [ perl ];
+
+    meta.platforms = lib.platforms.linux;
   };
 
   holo-router-gateway = callPackage ./gateway {};
