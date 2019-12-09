@@ -21,16 +21,4 @@ in
   };
 
   holo-router-gateway = callPackage ./gateway {};
-
-  holo-router-registry = buildRustPackage rustPlatform {
-    name = "holo-router-registry";
-    src = gitignoreSource ./registry;
-    cargoDir = ".";
-
-    nativeBuildInputs = [
-      nodejs
-      python
-      (wasm-pack.override { inherit rustPlatform; })
-    ];
-  };
 }
