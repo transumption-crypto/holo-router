@@ -10,7 +10,7 @@ in
   holo-router-agent = buildRustPackage rustPlatform {
     name = "holo-router-agent";
     src = gitignoreSource ./agent;
-    cargoSha256 = "0akyl9h6ajih1v4xspwiryzpwm1jwyp4jgqh8z54cb1b9ynn75ia";
+    cargoSha256 = "1gy0wad809p5n62kn6knq0xgrfdawcm9cj4z1kv0d7k8sj2cfnv1";
 
     RUST_SODIUM_LIB_DIR = "${libsodium}/lib";
     RUST_SODIUM_SHARED = "1";
