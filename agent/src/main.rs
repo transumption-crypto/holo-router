@@ -1,7 +1,6 @@
 use holochain_common::DEFAULT_PASSPHRASE;
 use holochain_conductor_api::key_loaders::mock_passphrase_manager;
 use holochain_conductor_api::keystore::{Keystore, PRIMARY_KEYBUNDLE_ID};
-use holochain_dpki::CODEC_HCS0;
 
 use ed25519_dalek::{Keypair, PublicKey, Signature};
 use failure::Error;
@@ -14,11 +13,11 @@ use std::convert::{TryFrom, TryInto};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs, path::PathBuf};
 
-fn encode_holochain_signing_key<S>(public_key: &PublicKey, serializer: S) -> Result<S::Ok, S::Error>
+fn encode_holochain_agent_id<S>(public_key: &PublicKey, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(&CODEC_HCS0.encode(&public_key.to_bytes()).unwrap())
+    serializer.serialize_str(&base36::encode(&public_key.to_bytes()[..]))
 }
 
 fn encode_instant<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
@@ -29,16 +28,14 @@ where
 }
 
 fn header_signature(signature: &Signature) -> HeaderValue {
-    base64::encode_config(&signature.to_bytes()[..], base64::STANDARD_NO_PAD)
-        .parse()
-        .unwrap()
+    base64::encode(&signature.to_bytes()[..]).parse().unwrap()
 }
 
 #[derive(Debug, Serialize)]
 struct Payload {
     #[serde(serialize_with = "encode_instant")]
     instant: SystemTime,
-    #[serde(serialize_with = "encode_holochain_signing_key")]
+    #[serde(serialize_with = "encode_holochain_agent_id")]
     holochain_agent_id: PublicKey,
     zerotier_address: zerotier::Address,
 }
