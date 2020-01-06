@@ -38,7 +38,7 @@ async fn peek(stream: &mut TcpStream, size: usize) -> Result<Vec<u8>, Box<dyn Er
     }
 }
 
-async fn splice(inbound: TcpStream, outbound: TcpStream) -> Result<(), Box<dyn Error>> {
+async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let (mut ri, mut wi) = inbound.split();
     let (mut ro, mut wo) = outbound.split();
 
