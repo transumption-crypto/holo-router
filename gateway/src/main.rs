@@ -1,3 +1,4 @@
+use failure::*;
 use futures::future;
 
 use log::Level::{Debug, Info, Warn};
@@ -15,7 +16,6 @@ use std::error::Error;
 use std::io::Write;
 use std::net::ToSocketAddrs;
 
-use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
 
 use uuid::Uuid;
@@ -43,8 +43,8 @@ async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Result<(), B
     let (mut ro, mut wo) = outbound.split();
 
     // TODO: use splice(2) syscall
-    let client_to_server = ri.copy(&mut wo);
-    let server_to_client = ro.copy(&mut wi);
+    let client_to_server = tokio::io::copy(&mut ri, &mut wo);
+    let server_to_client = tokio::io::copy(&mut ro, &mut wi);
 
     future::try_join(client_to_server, server_to_client).await?;
 
@@ -133,14 +133,14 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
 thread_local!(static UUID: RefCell<Uuid> = RefCell::new(Uuid::nil()));
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Fallible<()> {
     env_logger::Builder::from_default_env()
         .format(|buf, record| {
             UUID.with(|f| {
                 writeln!(
                     buf,
                     "[{} {} {:<5} {}] {}",
-                    buf.precise_timestamp(),
+                    buf.timestamp(),
                     *f.borrow(),
                     buf.default_styled_level(record.level()),
                     record.target(),
