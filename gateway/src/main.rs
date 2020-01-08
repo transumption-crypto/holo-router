@@ -12,7 +12,6 @@ use rustls::internal::msgs::handshake::{
 };
 
 use std::cell::RefCell;
-use std::error::Error;
 use std::io::Write;
 use std::net::ToSocketAddrs;
 
@@ -23,22 +22,18 @@ use uuid::Uuid;
 const TLS_HANDSHAKE_MAX_LENGTH: usize = 2048;
 const TLS_RECORD_HEADER_LENGTH: usize = 5;
 
-macro_rules! err {
-    ($($arg:tt)*) => { Err(format!($($arg)*).into()) }
-}
-
-async fn peek(stream: &mut TcpStream, size: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+async fn peek(stream: &mut TcpStream, size: usize) -> Fallible<Vec<u8>> {
     let mut buf = vec![0; size];
     let n = stream.peek(&mut buf).await?;
 
     if n == size {
         Ok(buf)
     } else {
-        err!("Peek size mismatch: {} != {}", n, size)
+        bail!("Peek size mismatch: {} != {}", n, size)
     }
 }
 
-async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Result<(), Box<dyn Error>> {
+async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Fallible<()> {
     let (mut ri, mut wi) = inbound.split();
     let (mut ro, mut wo) = outbound.split();
 
@@ -56,7 +51,7 @@ fn as_str<T: AsRef<str>>(s: T) -> String {
     format!("{}", s.as_ref())
 }
 
-async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
+async fn process(mut inbound: TcpStream) -> Fallible<()> {
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH).await?;
     let mut rd = Reader::init(&buf);
 
@@ -73,11 +68,11 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     );
 
     if content_type != ContentType::Handshake {
-        return err!("TLS message is not a handshake");
+        bail!("TLS message is not a handshake");
     }
 
     if handshake_size > TLS_HANDSHAKE_MAX_LENGTH {
-        return err!(
+        bail!(
             "TLS handshake size is {} > {}",
             handshake_size,
             TLS_HANDSHAKE_MAX_LENGTH
@@ -93,21 +88,21 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     let client_hello = match handshake.payload {
         HandshakePayload::ClientHello(x) => x,
         _ => {
-            return err!("TLS handshake is not Client Hello");
+            bail!("TLS handshake is not Client Hello");
         }
     };
 
     let sni = match client_hello.get_sni_extension() {
         Some(x) => x,
         None => {
-            return err!("Missing SNI");
+            bail!("Missing SNI");
         }
     };
 
     let host = match &sni[0].payload {
         ServerNamePayload::HostName(x) => x,
         ServerNamePayload::Unknown(_) => {
-            return err!("Unknown SNI payload type");
+            bail!("Unknown SNI payload type");
         }
     };
 
@@ -116,13 +111,13 @@ async fn process(mut inbound: TcpStream) -> Result<(), Box<dyn Error>> {
     log!(Debug, "SNI hostname: {}", host_str);
 
     if !host_str.ends_with("holohost.net") {
-        return err!("Rejected {}", host_str);
+        bail!("Rejected {}", host_str);
     }
 
     let addr = match format!("{}:443", host_str).to_socket_addrs() {
         Ok(mut addrs) => addrs.next().unwrap(),
         Err(_) => {
-            return err!("Failed to resolve {}", host_str);
+            bail!("Failed to resolve {}", host_str);
         }
     };
 
