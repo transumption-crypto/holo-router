@@ -145,7 +145,7 @@ async fn main() -> Fallible<()> {
         })
         .init();
 
-    let mut listener = TcpListener::bind("0.0.0.0:443").await?;
+    let mut listener = TcpListener::bind("[::]:443").await?;
 
     loop {
         let (inbound, inbound_addr) = listener.accept().await?;
