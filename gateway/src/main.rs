@@ -1,6 +1,6 @@
 use failure::*;
 use futures::future;
-use log::{Level, log, log_enabled};
+use log::{log, log_enabled, Level};
 use tokio::net::{TcpListener, TcpStream};
 use uuid::Uuid;
 
@@ -41,11 +41,6 @@ async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Fallible<()>
     Ok(())
 }
 
-// TODO: figure out the correct way to do this
-fn as_str<T: AsRef<str>>(s: T) -> String {
-    format!("{}", s.as_ref())
-}
-
 async fn process(mut inbound: TcpStream) -> Fallible<()> {
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH).await?;
     let mut rd = Reader::init(&buf);
@@ -82,34 +77,26 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
 
     let client_hello = match handshake.payload {
         HandshakePayload::ClientHello(x) => x,
-        _ => {
-            bail!("TLS handshake is not Client Hello");
-        }
+        _ => bail!("TLS handshake is not Client Hello"),
     };
 
     let sni = match client_hello.get_sni_extension() {
         Some(x) => x,
-        None => {
-            bail!("Missing SNI");
-        }
+        None => bail!("Missing SNI"),
     };
 
-    let host = match &sni[0].payload {
-        ServerNamePayload::HostName(x) => x,
-        ServerNamePayload::Unknown(_) => {
-            bail!("Unknown SNI payload type");
-        }
+    let host: &str = match &sni[0].payload {
+        ServerNamePayload::HostName(x) => x.as_ref().into(),
+        ServerNamePayload::Unknown(_) => bail!("Unknown SNI payload type"),
     };
 
-    let host_str = as_str(host);
+    log!(Level::Debug, "SNI hostname: {}", host);
 
-    log!(Level::Debug, "SNI hostname: {}", host_str);
-
-    if !host_str.ends_with("holohost.net") {
-        bail!("Rejected {}", host_str);
+    if !host.ends_with("holohost.net") {
+        bail!("Rejected {}", host);
     }
 
-    let outbound_addr = format!("{}:443", host_str);
+    let outbound_addr = format!("{}:443", host);
     let outbound = TcpStream::connect(outbound_addr).await?;
     splice(inbound, outbound).await
 }
@@ -146,7 +133,11 @@ async fn main() -> Fallible<()> {
                 });
             }
 
-            log!(Level::Info, "Accepted connection from {}", inbound_addr.ip());
+            log!(
+                Level::Info,
+                "Accepted connection from {}",
+                inbound_addr.ip()
+            );
 
             if let Err(e) = process(inbound).await {
                 log!(Level::Warn, "{}", e);
