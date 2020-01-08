@@ -1,8 +1,8 @@
 use failure::*;
 use futures::future;
-
-use log::Level::{Debug, Info, Warn};
-use log::{log, log_enabled};
+use log::{Level, log, log_enabled};
+use tokio::net::{TcpListener, TcpStream};
+use uuid::Uuid;
 
 // See: https://tls.ulfheim.net
 use rustls::internal::msgs::codec::{Codec, Reader};
@@ -14,10 +14,6 @@ use rustls::internal::msgs::handshake::{
 use std::cell::RefCell;
 use std::io::Write;
 use std::net::ToSocketAddrs;
-
-use tokio::net::{TcpListener, TcpStream};
-
-use uuid::Uuid;
 
 const TLS_HANDSHAKE_MAX_LENGTH: usize = 2048;
 const TLS_RECORD_HEADER_LENGTH: usize = 5;
@@ -60,7 +56,7 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
     let handshake_size = usize::from(u16::read(&mut rd).unwrap());
 
     log!(
-        Debug,
+        Level::Debug,
         "Content type: {:?}, protocol version: {:?}, handshake size: {}",
         content_type,
         protocol_version,
@@ -108,7 +104,7 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
 
     let host_str = as_str(host);
 
-    log!(Debug, "SNI hostname: {}", host_str);
+    log!(Level::Debug, "SNI hostname: {}", host_str);
 
     if !host_str.ends_with("holohost.net") {
         bail!("Rejected {}", host_str);
@@ -151,16 +147,16 @@ async fn main() -> Fallible<()> {
         let (inbound, inbound_addr) = listener.accept().await?;
 
         tokio::spawn(async move {
-            if log_enabled!(Warn) {
+            if log_enabled!(Level::Warn) {
                 UUID.with(|f| {
                     *f.borrow_mut() = Uuid::new_v4();
                 });
             }
 
-            log!(Info, "Accepted connection from {}", inbound_addr.ip());
+            log!(Level::Info, "Accepted connection from {}", inbound_addr.ip());
 
             if let Err(e) = process(inbound).await {
-                log!(Warn, "{}", e);
+                log!(Level::Warn, "{}", e);
             }
         });
     }
