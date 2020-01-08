@@ -13,7 +13,6 @@ use rustls::internal::msgs::handshake::{
 
 use std::cell::RefCell;
 use std::io::Write;
-use std::net::ToSocketAddrs;
 
 const TLS_HANDSHAKE_MAX_LENGTH: usize = 2048;
 const TLS_RECORD_HEADER_LENGTH: usize = 5;
@@ -110,14 +109,8 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
         bail!("Rejected {}", host_str);
     }
 
-    let addr = match format!("{}:443", host_str).to_socket_addrs() {
-        Ok(mut addrs) => addrs.next().unwrap(),
-        Err(_) => {
-            bail!("Failed to resolve {}", host_str);
-        }
-    };
-
-    let outbound = TcpStream::connect(&addr).await?;
+    let outbound_addr = format!("{}:443", host_str);
+    let outbound = TcpStream::connect(outbound_addr).await?;
     splice(inbound, outbound).await
 }
 
