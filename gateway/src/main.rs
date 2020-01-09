@@ -31,7 +31,6 @@ async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Fallible<()>
     let (mut ri, mut wi) = inbound.split();
     let (mut ro, mut wo) = outbound.split();
 
-    // TODO: use splice(2) syscall
     let client_to_server = tokio::io::copy(&mut ri, &mut wo);
     let server_to_client = tokio::io::copy(&mut ro, &mut wi);
 
@@ -69,6 +68,7 @@ async fn splice_by_sni(mut inbound: TcpStream) -> Fallible<()> {
 
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH + handshake_size).await?;
     let mut rd = Reader::init(&buf);
+
     rd.take(TLS_RECORD_HEADER_LENGTH);
 
     let handshake = HandshakeMessagePayload::read_version(&mut rd, protocol_version)
@@ -114,7 +114,7 @@ async fn main() -> Fallible<()> {
         let (inbound, inbound_addr) = listener.accept().await?;
 
         let request = async move {
-            debug!("Inbound IP address: {}", inbound_addr.ip());
+            info!("Inbound IP address: {}", inbound_addr.ip());
 
             if let Err(e) = splice_by_sni(inbound).in_current_span().await {
                 warn!("{}", e);
