@@ -44,13 +44,15 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH).await?;
     let mut rd = Reader::init(&buf);
 
-    let content_type = ContentType::read(&mut rd).unwrap();
+    let content_type = ContentType::read(&mut rd).ok_or(err_msg("Failed to read content type"))?;
     debug!("Content type: {:?}", content_type);
 
-    let protocol_version = ProtocolVersion::read(&mut rd).unwrap();
+    let protocol_version =
+        ProtocolVersion::read(&mut rd).ok_or(err_msg("Failed to read protocol version"))?;
     debug!("Protocol version: {:?}", protocol_version);
 
-    let handshake_size = usize::from(u16::read(&mut rd).unwrap());
+    let handshake_size =
+        usize::from(u16::read(&mut rd).ok_or(err_msg("Failed to read handshake size"))?);
     debug!("Handshake size: {:?}", handshake_size);
 
     if content_type != ContentType::Handshake {
@@ -69,17 +71,17 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
     let mut rd = Reader::init(&buf);
     rd.take(TLS_RECORD_HEADER_LENGTH);
 
-    let handshake = HandshakeMessagePayload::read_version(&mut rd, protocol_version).unwrap();
+    let handshake = HandshakeMessagePayload::read_version(&mut rd, protocol_version)
+        .ok_or(err_msg("Failed to read TLS handshake"))?;
 
     let client_hello = match handshake.payload {
         HandshakePayload::ClientHello(x) => x,
         _ => bail!("TLS handshake is not Client Hello"),
     };
 
-    let sni = match client_hello.get_sni_extension() {
-        Some(x) => x,
-        None => bail!("Missing SNI"),
-    };
+    let sni = client_hello
+        .get_sni_extension()
+        .ok_or(err_msg("Missing SNI"))?;
 
     let host: &str = match &sni[0].payload {
         ServerNamePayload::HostName(x) => x.as_ref().into(),
