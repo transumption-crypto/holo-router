@@ -23,7 +23,7 @@ async fn peek(stream: &mut TcpStream, size: usize) -> Fallible<Vec<u8>> {
     if n == size {
         Ok(buf)
     } else {
-        bail!("Peek size mismatch: {} != {}", n, size)
+        bail!("Socket peek size mismatch: {} != {}", n, size)
     }
 }
 
@@ -40,12 +40,16 @@ async fn splice(mut inbound: TcpStream, mut outbound: TcpStream) -> Fallible<()>
     Ok(())
 }
 
-async fn process(mut inbound: TcpStream) -> Fallible<()> {
+async fn splice_by_sni(mut inbound: TcpStream) -> Fallible<()> {
     let buf = peek(&mut inbound, TLS_RECORD_HEADER_LENGTH).await?;
     let mut rd = Reader::init(&buf);
 
     let content_type = ContentType::read(&mut rd).ok_or(err_msg("Failed to read content type"))?;
     debug!("Content type: {:?}", content_type);
+
+    if content_type != ContentType::Handshake {
+        bail!("Content type is not Handshake");
+    }
 
     let protocol_version =
         ProtocolVersion::read(&mut rd).ok_or(err_msg("Failed to read protocol version"))?;
@@ -55,13 +59,9 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
         usize::from(u16::read(&mut rd).ok_or(err_msg("Failed to read handshake size"))?);
     debug!("Handshake size: {:?}", handshake_size);
 
-    if content_type != ContentType::Handshake {
-        bail!("TLS message is not a handshake");
-    }
-
     if handshake_size > TLS_HANDSHAKE_MAX_LENGTH {
         bail!(
-            "TLS handshake size is {}, while max is {}",
+            "Handshake size is {}, while max is {}",
             handshake_size,
             TLS_HANDSHAKE_MAX_LENGTH
         );
@@ -72,29 +72,29 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
     rd.take(TLS_RECORD_HEADER_LENGTH);
 
     let handshake = HandshakeMessagePayload::read_version(&mut rd, protocol_version)
-        .ok_or(err_msg("Failed to read TLS handshake"))?;
+        .ok_or(err_msg("Failed to read handshake"))?;
 
     let client_hello = match handshake.payload {
         HandshakePayload::ClientHello(x) => x,
-        _ => bail!("TLS handshake is not Client Hello"),
+        _ => bail!("Handshake payload is not Client Hello"),
     };
 
     let sni = client_hello
         .get_sni_extension()
-        .ok_or(err_msg("Missing SNI"))?;
+        .ok_or(err_msg("SNI is missing"))?;
 
-    let host: &str = match &sni[0].payload {
+    let hostname: &str = match &sni[0].payload {
         ServerNamePayload::HostName(x) => x.as_ref().into(),
-        ServerNamePayload::Unknown(_) => bail!("Unknown SNI payload type"),
+        ServerNamePayload::Unknown(_) => bail!("SNI payload uses unknown format"),
     };
 
-    debug!("SNI hostname: {}", host);
+    debug!("Hostname: {}", hostname);
 
-    if !host.ends_with("holohost.net") {
+    if !hostname.ends_with("holohost.net") {
         bail!("Hostname is not *.holohost.net");
     }
 
-    let outbound_addr = format!("{}:443", host);
+    let outbound_addr = format!("{}:443", hostname);
     let outbound = TcpStream::connect(outbound_addr).await?;
 
     splice(inbound, outbound).await
@@ -116,7 +116,7 @@ async fn main() -> Fallible<()> {
         let request = async move {
             debug!("Inbound IP address: {}", inbound_addr.ip());
 
-            if let Err(e) = process(inbound).in_current_span().await {
+            if let Err(e) = splice_by_sni(inbound).in_current_span().await {
                 warn!("{}", e);
             }
         };
