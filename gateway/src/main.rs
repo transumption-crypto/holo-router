@@ -90,7 +90,7 @@ async fn splice_by_sni(mut inbound: TcpStream) -> Fallible<()> {
 
     debug!("Hostname: {}", hostname);
 
-    if !hostname.ends_with("holohost.net") {
+    if !hostname.ends_with(".holohost.net") {
         bail!("Hostname is not *.holohost.net");
     }
 
