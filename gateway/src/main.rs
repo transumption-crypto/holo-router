@@ -59,7 +59,7 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
 
     if handshake_size > TLS_HANDSHAKE_MAX_LENGTH {
         bail!(
-            "TLS handshake size is {} > {}",
+            "TLS handshake size is {}, while max is {}",
             handshake_size,
             TLS_HANDSHAKE_MAX_LENGTH
         );
@@ -89,7 +89,7 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
     debug!("SNI hostname: {}", host);
 
     if !host.ends_with("holohost.net") {
-        bail!("Rejected {}", host);
+        bail!("Hostname is not *.holohost.net");
     }
 
     let outbound_addr = format!("{}:443", host);
@@ -112,7 +112,7 @@ async fn main() -> Fallible<()> {
         let (inbound, inbound_addr) = listener.accept().await?;
 
         let request = async move {
-            debug!("Accepted connection from {}", inbound_addr.ip());
+            debug!("Inbound IP address: {}", inbound_addr.ip());
 
             if let Err(e) = process(inbound).in_current_span().await {
                 warn!("{}", e);
