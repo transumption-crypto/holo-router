@@ -1,7 +1,9 @@
 use failure::*;
 use futures::future;
-use log::{log, log_enabled, Level};
 use tokio::net::{TcpListener, TcpStream};
+use tracing::*;
+use tracing_futures::*;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use uuid::Uuid;
 
 // See: https://tls.ulfheim.net
@@ -10,9 +12,6 @@ use rustls::internal::msgs::enums::{ContentType, ProtocolVersion};
 use rustls::internal::msgs::handshake::{
     HandshakeMessagePayload, HandshakePayload, ServerNamePayload,
 };
-
-use std::cell::RefCell;
-use std::io::Write;
 
 const TLS_HANDSHAKE_MAX_LENGTH: usize = 2048;
 const TLS_RECORD_HEADER_LENGTH: usize = 5;
@@ -46,16 +45,13 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
     let mut rd = Reader::init(&buf);
 
     let content_type = ContentType::read(&mut rd).unwrap();
-    let protocol_version = ProtocolVersion::read(&mut rd).unwrap();
-    let handshake_size = usize::from(u16::read(&mut rd).unwrap());
+    debug!("Content type: {:?}", content_type);
 
-    log!(
-        Level::Debug,
-        "Content type: {:?}, protocol version: {:?}, handshake size: {}",
-        content_type,
-        protocol_version,
-        handshake_size
-    );
+    let protocol_version = ProtocolVersion::read(&mut rd).unwrap();
+    debug!("Protocol version: {:?}", protocol_version);
+
+    let handshake_size = usize::from(u16::read(&mut rd).unwrap());
+    debug!("Handshake size: {:?}", handshake_size);
 
     if content_type != ContentType::Handshake {
         bail!("TLS message is not a handshake");
@@ -90,7 +86,7 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
         ServerNamePayload::Unknown(_) => bail!("Unknown SNI payload type"),
     };
 
-    log!(Level::Debug, "SNI hostname: {}", host);
+    debug!("SNI hostname: {}", host);
 
     if !host.ends_with("holohost.net") {
         bail!("Rejected {}", host);
@@ -98,50 +94,31 @@ async fn process(mut inbound: TcpStream) -> Fallible<()> {
 
     let outbound_addr = format!("{}:443", host);
     let outbound = TcpStream::connect(outbound_addr).await?;
+
     splice(inbound, outbound).await
 }
 
-thread_local!(static UUID: RefCell<Uuid> = RefCell::new(Uuid::nil()));
-
 #[tokio::main]
 async fn main() -> Fallible<()> {
-    env_logger::Builder::from_default_env()
-        .format(|buf, record| {
-            UUID.with(|f| {
-                writeln!(
-                    buf,
-                    "[{} {} {:<5} {}] {}",
-                    buf.timestamp(),
-                    *f.borrow(),
-                    buf.default_styled_level(record.level()),
-                    record.target(),
-                    record.args()
-                )
-            })
-        })
-        .init();
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)?;
 
     let mut listener = TcpListener::bind("[::]:443").await?;
 
     loop {
         let (inbound, inbound_addr) = listener.accept().await?;
 
-        tokio::spawn(async move {
-            if log_enabled!(Level::Warn) {
-                UUID.with(|f| {
-                    *f.borrow_mut() = Uuid::new_v4();
-                });
-            }
+        let request = async move {
+            debug!("Accepted connection from {}", inbound_addr.ip());
 
-            log!(
-                Level::Info,
-                "Accepted connection from {}",
-                inbound_addr.ip()
-            );
-
-            if let Err(e) = process(inbound).await {
-                log!(Level::Warn, "{}", e);
+            if let Err(e) = process(inbound).in_current_span().await {
+                warn!("{}", e);
             }
-        });
+        };
+
+        tokio::spawn(request.instrument(info_span!("request", uuid = ?Uuid::new_v4())));
     }
 }
