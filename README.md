@@ -1,10 +1,8 @@
 # Holo Router
 
-## Architecture
-
 ![Architecture diagram](./diagram.svg)
 
-### Gateway
+## Gateway
 
 Gateway dispatches unaltered TCP traffic by TLS SNI that is resolved by
 replacing `.holohost.net` suffix with `.internal-holohost.net`.
