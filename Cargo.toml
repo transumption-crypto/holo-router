@@ -1,6 +1,5 @@
 [workspace]
 
 members = [
-  "gateway",
-  "registry",
+  "gateway"
 ]
