@@ -1,11 +1,12 @@
 # Holo Router
 
-![Architecture diagram](./diagram.svg)
-
 ## Gateway
 
-Gateway dispatches unaltered TCP traffic by TLS SNI that is resolved by
-replacing `.holohost.net` suffix with `.internal-holohost.net`.
+![Gateway diagram](./gateway/res/diagram.svg)
+
+Gateway is a TLS peek-and-splice proxy that dispatches unaltered TCP traffic by
+SNI that is resolved by replacing `.holohost.net` suffix with
+`.internal-holohost.net`.
 
 [dnscrypt-proxy]: https://github.com/DNSCrypt/dnscrypt-proxy
 [letsencrypt]: https://letsencrypt.org
