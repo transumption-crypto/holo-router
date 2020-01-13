@@ -11,3 +11,7 @@ SNI that is resolved by replacing `.holohost.net` suffix with
 [dnscrypt-proxy]: https://github.com/DNSCrypt/dnscrypt-proxy
 [letsencrypt]: https://letsencrypt.org
 [wikipedia-sni]: https://en.wikipedia.org/wiki/Server_Name_Indication
+
+## Peer Manager
+
+![Peer Manager diagram](./peer-manager/res/diagram.svg)
